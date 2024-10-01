@@ -3,6 +3,7 @@
 // @description  checks for non max bds
 // @author       Miro
 // @include      https://*.grepolis.com/game/*
+// @version      2.1.0
 // @grant        none
 // ==/UserScript==
 
