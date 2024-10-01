@@ -1,13 +1,9 @@
 // ==UserScript==
 // @name         bd level check
-// @version      1.1.0
 // @description  checks for non max bds
 // @author       Miro
 // @include      https://*.grepolis.com/game/*
 // @grant        none
-// @namespace https://greasyfork.org/users/984383
-// @downloadURL https://update.greasyfork.org/scripts/502099/bd%20level%20check.user.js
-// @updateURL https://update.greasyfork.org/scripts/502099/bd%20level%20check.meta.js
 // ==/UserScript==
 
 (async function() {
@@ -22,24 +18,29 @@
 
     bd_check = {};
 
-    
-    var css = {'background': 'BurlyWood no-repeat scroll -2px -3px'};
+    bd_check.add_data = function() {
+        if (associations.length > 0 && $('#bd_level_check').size() == 0) {
+            let associations_html = '';
+            for (const association of associations) {
+                associations_html += "<li>Boerendorp level: " + association.FarmTownLevel + " for Town: <a href='#' class='gp_town_link' onclick='bd_check.jump_and_open_bd_window(" + association.TownId + "," +association.FarmTownId + ")'>" + association.townName + "</a><br></li>"
+            }
+            $('<div id="bd_level_check" style="width=400px; height:500px; overflow-y:scroll; left-margin:auto; overflow-x:auto;"><div class="game_border"><div class="game_border_top"></div><div class="game_border_bottom"></div><div class="game_border_left"></div><div class="game_border_right"></div><div class="game_border_corner corner1"></div><div class="game_border_corner corner2"></div><div class="game_border_corner corner3"></div><div class="game_border_corner corner4"></div><div class="game_header bold"></div><ul>' + associations_html + '</ul>').insertAfter($('#farm_town_wrapper'));
+            $('#bd_level_check').parent().parent().parent().width('1200px');
 
-    function add_button() {
-        $('<div class="activity_wrap"><div class="activity check_bd"><div class="divider"></div></div></div>').insertAfter($('.toolbar_activities .middle .activity_wrap:last-child'));
-
-        let btn = $('div .check_bd');
-
-        btn.css(css);
-        btn.on('click', bd_check.check_bd_max);
+            let window = GPWindowMgr.getOpenFirst(GPWindowMgr.TYPE_FARM_TOWN_OVERVIEWS);
+            window.setPosition(['center', 'center']);
+        }
     }
 
-    
     bd_check.check_bd_max = function() {
         associations.length = 0;
         for (const farmTownRelation of farmTownRelations) {
             const farmTownId = farmTownRelation.getFarmTownId();
-            const farmTownLevel = farmTownRelation.attributes.expansion_stage;
+            let farmTownLevel = farmTownRelation.attributes.expansion_stage;
+
+            if (farmTownLevel == 1 && farmTownRelation.upgrade_cost == 1) {
+                farmTownLevel = 0;
+            }
 
             if (farmTownLevel < 6) {
                 const farmTown = MM.getModels().FarmTown[farmTownId];
@@ -49,33 +50,15 @@
                 }
             }
         }
-
-        if (associations.length > 0) {
-            let associations_html = '';
-            for (const association of associations) {
-                associations_html += "Boerendorp level: " + association.FarmTownLevel + " for  Town: <a href='#' class='gp_town_link' onclick='bd_check.jump_and_open_bd_window(" + association.TownId + "," +association.FarmTownId + ")'>" + association.townName + "</a><br>";
-            }
-
-            let bdWindow = GPWindowMgr.Create(GPWindowMgr.TYPE_DIALOG, "BDs not max level");
-            bdWindow.setSize(600, 600);
-            bdWindow.setPosition(['center, center']);
-            bdWindow.setContent2(associations_html);
-            bdWindow.getJQElement().find('div.gpwindow_content').css('overflow-y', 'scroll');
-
-            
-        } else {
-            let bdWindow = GPWindowMgr.Create(GPWindowMgr.TYPE_DIALOG, "BDs level check");
-            bdWindow.setSize(300, 100)
-            bdWindow.setPosition(['center, center']);
-            bdWindow.setContent2("All BDs are max level.");
-        }
     }
 
-    bd_check.jump_and_open_bd_window = function(town_id, farm_town_id) {
-        WMap.mapJump(ITowns.getTown(town_id), true);
+    bd_check.jump_and_open_bd_window = async function(town_id, farm_town_id) {
         HelperTown.townSwitch(town_id);
+        await sleep(100);
+        WMap.mapJump(ITowns.getTown(town_id), true);
         FarmTownWindowFactory.openWindow(farm_town_id);
     }
-
-    add_button();
+    bd_check.check_bd_max();
+    setInterval(bd_check.check_bd_max, 1000 * 60 * 10);
+    let bd_interval = setInterval(bd_check.add_data, 200);
 })();
